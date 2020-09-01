@@ -18,16 +18,11 @@ package com.example.android.camera2.basic.fragments
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.ImageFormat
-import android.hardware.camera2.CameraCaptureSession
-import android.hardware.camera2.CameraCharacteristics
-import android.hardware.camera2.CameraDevice
-import android.hardware.camera2.CameraManager
-import android.hardware.camera2.CaptureRequest
-import android.hardware.camera2.CaptureResult
-import android.hardware.camera2.DngCreator
-import android.hardware.camera2.TotalCaptureResult
+import android.hardware.camera2.*
 import android.media.Image
 import android.media.ImageReader
 import android.os.Build
@@ -35,11 +30,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.util.Log
-import android.view.LayoutInflater
-import android.view.Surface
-import android.view.SurfaceHolder
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import androidx.core.graphics.drawable.toDrawable
 import androidx.exifinterface.media.ExifInterface
 import androidx.fragment.app.Fragment
@@ -48,12 +39,13 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.Navigation
 import androidx.navigation.fragment.navArgs
-import com.example.android.camera.utils.computeExifOrientation
-import com.example.android.camera.utils.getPreviewOutputSize
 import com.example.android.camera.utils.AutoFitSurfaceView
 import com.example.android.camera.utils.OrientationLiveData
+import com.example.android.camera.utils.computeExifOrientation
+import com.example.android.camera.utils.getPreviewOutputSize
 import com.example.android.camera2.basic.CameraActivity
 import com.example.android.camera2.basic.R
+import com.example.android.camera2.basic.Utils
 import kotlinx.android.synthetic.main.fragment_camera.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -63,14 +55,13 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.text.SimpleDateFormat
+import java.util.*
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.TimeoutException
-import java.util.Date
-import java.util.Locale
-import kotlin.RuntimeException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
+import kotlin.math.absoluteValue
 
 class CameraFragment : Fragment() {
 
@@ -193,7 +184,17 @@ class CameraFragment : Fragment() {
         // Initialize an image reader which will be used to capture still photos
         val size = characteristics.get(
                 CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)!!
-                .getOutputSizes(args.pixelFormat).maxBy { it.height * it.width }!!
+                .getOutputSizes(args.pixelFormat).reduce { acc, size ->
+                        if ((acc.width - 640).absoluteValue < (size.width - 640).absoluteValue)  acc
+                        else size
+                    }
+
+//        val map: StreamConfigurationMap = characteristics[CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP]!!
+//        imageDimension = map.getOutputSizes(SurfaceTexture::class.java).get(0)
+//
+//        for (size in map.getOutputSizes(SurfaceTexture::class.java)) {
+//            Log.i(TAG, "imageDimension $size")
+//        }
         imageReader = ImageReader.newInstance(
                 size.width, size.height, args.pixelFormat, IMAGE_BUFFER_SIZE)
 
@@ -220,7 +221,6 @@ class CameraFragment : Fragment() {
             lifecycleScope.launch(Dispatchers.IO) {
                 takePhoto().use { result ->
                     Log.d(TAG, "Result received: $result")
-
                     // Save the result to disk
                     val output = saveResult(result)
                     Log.d(TAG, "Image saved: ${output.absolutePath}")
@@ -321,6 +321,30 @@ class CameraFragment : Fragment() {
         val imageQueue = ArrayBlockingQueue<Image>(IMAGE_BUFFER_SIZE)
         imageReader.setOnImageAvailableListener({ reader ->
             val image = reader.acquireNextImage()
+
+            val planes = image.planes
+            val bs = planes[0].buffer.capacity()
+            val ba = ByteArray(bs)
+            planes[0].buffer.get(ba)
+
+
+            val bitmap: Bitmap = BitmapFactory.decodeByteArray(ba, 0, ba.size) // NULL err
+
+            Log.d("R1", "bitmap created")
+
+           Utils.getRGB(bitmap)
+
+            val r1: Int
+            val g1: Int
+            val b1: Int
+            val p = 50
+            r1 = p shr 16 and 0xff
+            g1 = p shr 8 and 0xff
+            b1 = p and 0xff
+            Log.d("R1", r1.toString())
+            Log.d("G1", g1.toString())
+            Log.d("B1", b1.toString())
+
             Log.d(TAG, "Image available in queue: ${image.timestamp}")
             imageQueue.add(image)
         }, imageReaderHandler)
