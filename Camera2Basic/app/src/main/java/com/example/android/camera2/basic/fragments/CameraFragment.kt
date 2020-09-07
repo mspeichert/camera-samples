@@ -188,13 +188,14 @@ class CameraFragment : Fragment() {
                         if ((acc.width - 640).absoluteValue < (size.width - 640).absoluteValue)  acc
                         else size
                     }
+//        val size = characteristics.get(
+//                CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)!!
+//                .getOutputSizes(args.pixelFormat).minBy { it.height * it.width }!!
+        val xs = characteristics.get(CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE)
+        val ys = characteristics.get(CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE)
+        val zs = characteristics.get(CameraCharacteristics.SENSOR_INFO_MAX_FRAME_DURATION)
 
-//        val map: StreamConfigurationMap = characteristics[CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP]!!
-//        imageDimension = map.getOutputSizes(SurfaceTexture::class.java).get(0)
-//
-//        for (size in map.getOutputSizes(SurfaceTexture::class.java)) {
-//            Log.i(TAG, "imageDimension $size")
-//        }
+
         imageReader = ImageReader.newInstance(
                 size.width, size.height, args.pixelFormat, IMAGE_BUFFER_SIZE)
 
@@ -206,6 +207,12 @@ class CameraFragment : Fragment() {
 
         val captureRequest = camera.createCaptureRequest(
                 CameraDevice.TEMPLATE_PREVIEW).apply { addTarget(viewFinder.holder.surface) }
+
+
+        captureRequest.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_OFF);
+//        captureRequest.set(CaptureRequest.SENSOR_EXPOSURE_TIME, exposureTime);
+        captureRequest.set(CaptureRequest.SENSOR_SENSITIVITY, 100);
+//        captureRequest.set(CaptureRequest.SENSOR_FRAME_DURATION, frameDuration);
 
         // This will keep sending the capture request as frequently as possible until the
         // session is torn down or session.stopRepeating() is called
@@ -332,18 +339,7 @@ class CameraFragment : Fragment() {
 
             Log.d("R1", "bitmap created")
 
-           Utils.getRGB(bitmap)
-
-            val r1: Int
-            val g1: Int
-            val b1: Int
-            val p = 50
-            r1 = p shr 16 and 0xff
-            g1 = p shr 8 and 0xff
-            b1 = p and 0xff
-            Log.d("R1", r1.toString())
-            Log.d("G1", g1.toString())
-            Log.d("B1", b1.toString())
+            val result = Utils.getRGB(bitmap)
 
             Log.d(TAG, "Image available in queue: ${image.timestamp}")
             imageQueue.add(image)

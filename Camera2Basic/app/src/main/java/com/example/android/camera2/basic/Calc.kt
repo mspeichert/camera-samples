@@ -11,6 +11,7 @@ typealias PixelsByXY = MutableMap<String, PixelData>
 
 class PixelData(var x: Int, var y: Int, var color: Int) {}
 class Rect(var top: Int, var left: Int, var right: Int, var bottom: Int) {}
+class ColorResult(var red: Int, var green: Int, var blue: Int) {}
 
 class Utils {
     companion object Calc {
@@ -24,20 +25,18 @@ class Utils {
 
         fun areGroupsMergable(g1: PixelsByXY, g2: PixelsByXY): Boolean {
             for ((k, v) in g2) {
-                if (findNeighbours(g1, v) { c, n -> compareColors(c.color, n.color, false) < 50 }) return true
+                if (findNeighbours(g1, v) { c, n -> compareColors(c.color, n.color, true) < 50 }) return true
             }
             return false
         }
 
-        fun getRGB(b: Bitmap) {
+        fun getRGB(b: Bitmap): ColorResult? {
 
-//            val colorGroups = mutableMapOf<String, Int>()
             val colorGroups: MutableList<PixelsByXY> = ArrayList()
             val black = mostPopular(b)
 
             for (x in 0 until b.width) {
                 for (y in 0 until b.height) {
-//                    val pixie = b.getPixel(x, y)
                     val data = PixelData(x, y, b.getPixel(x, y))
 
                     if (compareColors(data.color, black, false) > 8) {
@@ -48,7 +47,7 @@ class Utils {
                     }
                 }
             }
-            logColor(black)
+
             var iterator = 1
             while (iterator < colorGroups.size) {
                 val r = rang(iterator)
@@ -65,17 +64,55 @@ class Utils {
             colorGroups.forEach {
                 paintBitmap(mutableB, findRect(it), Color.RED)
             }
-            Log.d("asdas", "asd")
+            var biggest: PixelsByXY? = null
+            for (cg in colorGroups) {
+                if (biggest === null) {
+                    biggest = cg
+                    continue
+                }
+                if (biggest.size < cg.size) biggest = cg
+            }
+            val x = 5/2.toDouble()
+            if (biggest === null) return null
+            val finalRect = cutRect(findRect(biggest), 30)
+            val finalGroup = biggest.filter { pd -> isInOval(finalRect, pd.value) }
+
+            val avgRed = finalGroup.map { d -> Color.red(d.value.color).toDouble() }.reduce { a, d -> a+d }/finalGroup.size
+            val avgGreen = finalGroup.map { d -> Color.green(d.value.color).toDouble() }.reduce { a,d -> a+d }/finalGroup.size
+            val avgBlue = finalGroup.map { d -> Color.blue(d.value.color).toDouble() }.reduce { a,d -> a+d }/finalGroup.size
+
+            return ColorResult(avgRed.toInt(), avgGreen.toInt(), avgBlue.toInt())
         }
 
         fun squaredDelta(v1: Int, v2: Int): Double {
             return (v1 - v2).toDouble().pow(2)
         }
 
+        fun isInOval(r: Rect, p: PixelData): Boolean {
+            val xRadius = (r.right - r.left)/2.toDouble()
+            val yRadius = (r.bottom - r.top)/2.toDouble()
+            val middleX = r.left + xRadius
+            val middleY = r.top + yRadius
+
+            val a = (p.x - middleX)/xRadius
+            val b = (p.y - middleY)/yRadius
+            val r = a.pow(2) + b.pow(2)
+            return r <= 1
+        }
+
+        fun cutRect(r: Rect, perc: Int): Rect {
+            val mult = (100 - perc) / 100.toDouble()
+            val vl = r.bottom - r.top
+            val hl = r.right - r.left
+            val vdiff = ((vl - vl * mult)/2).toInt()
+            val hdiff = ((hl - hl * mult)/2).toInt()
+            return Rect(r.top + vdiff, r.left + hdiff, r.right - hdiff, r.bottom - vdiff)
+        }
+
 
         fun findNeighbours(g: PixelsByXY, c: PixelData, cond: (c: PixelData, n: PixelData) -> Boolean): Boolean {
-            for (x in -1 until 1) {
-                for (y in -1 until 1) {
+            for (x in -1 until 2) {
+                for (y in -1 until 2) {
                     val neighbour = g[xy(c.x + x, c.y + y)]
                     if (neighbour == null) continue
                     if (cond(c, neighbour)) return true
@@ -133,7 +170,6 @@ class Utils {
 
             return sqrt(sum / conversionIndex)
         }
-
 
         fun mostPopular(b: Bitmap): Int {
             val repetitions = mutableMapOf<Int, Int>()
