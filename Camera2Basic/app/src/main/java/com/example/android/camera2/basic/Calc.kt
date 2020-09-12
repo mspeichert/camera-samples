@@ -74,7 +74,7 @@ class Utils {
             }
             val x = 5/2.toDouble()
             if (biggest === null) return null
-            val finalRect = cutRect(findRect(biggest), 30)
+            val finalRect = cutRect(findRect(biggest), 50)
             val finalGroup = biggest.filter { pd -> isInOval(finalRect, pd.value) }
 
             val avgRed = finalGroup.map { d -> Color.red(d.value.color).toDouble() }.reduce { a, d -> a+d }/finalGroup.size

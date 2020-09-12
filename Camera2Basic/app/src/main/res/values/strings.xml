@@ -16,4 +16,6 @@
 <resources>
     <string name="app_name">Camera2Basic</string>
     <string name="capture">Capture</string>
+    <string name="intro">Hello, click start please (instructions will be placed here and it will be pretty), when you click start timer starts. Also here you will be able to adjust settings</string>
+    <string name="start">Start</string>
 </resources>

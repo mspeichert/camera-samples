@@ -25,13 +25,11 @@ import android.graphics.ImageFormat
 import android.hardware.camera2.*
 import android.media.Image
 import android.media.ImageReader
-import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.HandlerThread
+import android.os.*
 import android.util.Log
 import android.view.*
 import androidx.core.graphics.drawable.toDrawable
+import androidx.core.view.isVisible
 import androidx.exifinterface.media.ExifInterface
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
@@ -164,8 +162,8 @@ class CameraFragment : Fragment() {
 
         // Used to rotate the output media to match device orientation
         relativeOrientation = OrientationLiveData(requireContext(), characteristics).apply {
-            observe(viewLifecycleOwner, Observer {
-                orientation -> Log.d(TAG, "Orientation changed: $orientation")
+            observe(viewLifecycleOwner, Observer { orientation ->
+                Log.d(TAG, "Orientation changed: $orientation")
             })
         }
     }
@@ -185,9 +183,9 @@ class CameraFragment : Fragment() {
         val size = characteristics.get(
                 CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)!!
                 .getOutputSizes(args.pixelFormat).reduce { acc, size ->
-                        if ((acc.width - 640).absoluteValue < (size.width - 640).absoluteValue)  acc
-                        else size
-                    }
+                    if ((acc.width - 640).absoluteValue < (size.width - 640).absoluteValue) acc
+                    else size
+                }
 //        val size = characteristics.get(
 //                CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)!!
 //                .getOutputSizes(args.pixelFormat).minBy { it.height * it.width }!!
@@ -217,44 +215,43 @@ class CameraFragment : Fragment() {
         // This will keep sending the capture request as frequently as possible until the
         // session is torn down or session.stopRepeating() is called
         session.setRepeatingRequest(captureRequest.build(), null, cameraHandler)
+        object : CountDownTimer(5000, 1000) {
+            override fun onTick(millisUntilFinished: Long) {
+                timer_text.setText("" + millisUntilFinished / 1000)
+            }
 
-        // Listen to the capture button
-        capture_button.setOnClickListener {
+            override fun onFinish() {
+                timer_text.isVisible = false
+                lifecycleScope.launch(Dispatchers.IO) {
+                    takePhoto().use { result ->
+                        Log.d(TAG, "Result received: $result")
+                        // Save the result to disk
+                        val output = saveResult(result)
+                        Log.d(TAG, "Image saved: ${output.absolutePath}")
 
-            // Disable click listener to prevent multiple requests simultaneously in flight
-            it.isEnabled = false
+                        // If the result is a JPEG file, update EXIF metadata with orientation info
+                        if (output.extension == "jpg") {
+                            val exif = ExifInterface(output.absolutePath)
+                            exif.setAttribute(
+                                    ExifInterface.TAG_ORIENTATION, result.orientation.toString())
+                            exif.saveAttributes()
+                            Log.d(TAG, "EXIF metadata saved: ${output.absolutePath}")
+                        }
 
-            // Perform I/O heavy operations in a different scope
-            lifecycleScope.launch(Dispatchers.IO) {
-                takePhoto().use { result ->
-                    Log.d(TAG, "Result received: $result")
-                    // Save the result to disk
-                    val output = saveResult(result)
-                    Log.d(TAG, "Image saved: ${output.absolutePath}")
-
-                    // If the result is a JPEG file, update EXIF metadata with orientation info
-                    if (output.extension == "jpg") {
-                        val exif = ExifInterface(output.absolutePath)
-                        exif.setAttribute(
-                                ExifInterface.TAG_ORIENTATION, result.orientation.toString())
-                        exif.saveAttributes()
-                        Log.d(TAG, "EXIF metadata saved: ${output.absolutePath}")
-                    }
-
-                    // Display the photo taken to user
-                    lifecycleScope.launch(Dispatchers.Main) {
-                        navController.navigate(CameraFragmentDirections
-                                .actionCameraToJpegViewer(output.absolutePath)
-                                .setOrientation(result.orientation)
-                                .setDepth(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
-                                        result.format == ImageFormat.DEPTH_JPEG))
+                        // Display the photo taken to user
+                        lifecycleScope.launch(Dispatchers.Main) {
+                            navController.navigate(CameraFragmentDirections
+                                    .actionCameraToJpegViewer(output.absolutePath)
+                                    .setOrientation(result.orientation)
+                                    .setDepth(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+                                            result.format == ImageFormat.DEPTH_JPEG))
+                        }
                     }
                 }
-
-                // Re-enable click listener after photo is taken
-                it.post { it.isEnabled = true }
             }
-        }
+        }.start()
+        // Listen to the capture button
+
     }
 
     /** Opens the camera and returns the opened device (as the result of the suspend coroutine) */
@@ -273,7 +270,7 @@ class CameraFragment : Fragment() {
             }
 
             override fun onError(device: CameraDevice, error: Int) {
-                val msg = when(error) {
+                val msg = when (error) {
                     ERROR_CAMERA_DEVICE -> "Fatal (device)"
                     ERROR_CAMERA_DISABLED -> "Device policy"
                     ERROR_CAMERA_IN_USE -> "Camera in use"
@@ -300,7 +297,7 @@ class CameraFragment : Fragment() {
 
         // Create a capture session using the predefined targets; this also involves defining the
         // session state callback to be notified of when the session is ready
-        device.createCaptureSession(targets, object: CameraCaptureSession.StateCallback() {
+        device.createCaptureSession(targets, object : CameraCaptureSession.StateCallback() {
 
             override fun onConfigured(session: CameraCaptureSession) = cont.resume(session)
 
@@ -322,7 +319,8 @@ class CameraFragment : Fragment() {
 
         // Flush any images left in the image reader
         @Suppress("ControlFlowWithEmptyBody")
-        while (imageReader.acquireNextImage() != null) {}
+        while (imageReader.acquireNextImage() != null) {
+        }
 
         // Start a new image queue
         val imageQueue = ArrayBlockingQueue<Image>(IMAGE_BUFFER_SIZE)
@@ -385,7 +383,7 @@ class CameraFragment : Fragment() {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
                                 image.format != ImageFormat.DEPTH_JPEG &&
                                 image.timestamp != resultTimestamp) continue
-                         Log.d(TAG, "Matching image dequeued: ${image.timestamp}")
+                        Log.d(TAG, "Matching image dequeued: ${image.timestamp}")
 
                         // Unset the image reader listener
                         imageReaderHandler.removeCallbacks(timeoutRunnable)
