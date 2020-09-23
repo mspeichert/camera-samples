@@ -20,7 +20,6 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Color
 import android.hardware.camera2.*
 import android.media.Image
 import android.media.ImageReader
@@ -30,20 +29,16 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.util.Log
 import android.view.*
-import androidx.core.graphics.drawable.toDrawable
-import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.Navigation
 import androidx.navigation.fragment.navArgs
 import com.example.android.camera.utils.getPreviewOutputSize
-import com.example.android.camera2.basic.CameraActivity
-import com.example.android.camera2.basic.R
-import com.example.android.camera2.basic.State
-import com.example.android.camera2.basic.Utils
+import com.example.android.camera2.basic.*
 import kotlinx.android.synthetic.main.fragment_camera.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.Closeable
@@ -85,19 +80,6 @@ class CameraFragment : Fragment() {
 
     /** [Handler] corresponding to [cameraThread] */
     private val cameraHandler = Handler(cameraThread.looper)
-
-    /** Performs recording animation of flashing screen */
-    private val animationTask: Runnable by lazy {
-        Runnable {
-            // Flash white animation
-            overlay.background = Color.argb(150, 255, 255, 255).toDrawable()
-            // Wait for ANIMATION_FAST_MILLIS
-            overlay.postDelayed({
-                // Remove white flash animation
-                overlay.background = null
-            }, CameraActivity.ANIMATION_FAST_MILLIS)
-        }
-    }
 
     /** [HandlerThread] where all buffer reading operations run */
     private val imageReaderThread = HandlerThread("imageReaderThread").apply { start() }
@@ -198,7 +180,7 @@ class CameraFragment : Fragment() {
 
         captureRequest.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_OFF);
 //        captureRequest.set(CaptureRequest.SENSOR_EXPOSURE_TIME, exposureTime);
-        captureRequest.set(CaptureRequest.SENSOR_SENSITIVITY, 100)
+        captureRequest.set(CaptureRequest.SENSOR_SENSITIVITY, State.method.value.ISO)
         captureRequest.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_TORCH);
 
 //        captureRequest.set(CaptureRequest.JPEG_ORIENTATION, 180)
@@ -208,17 +190,29 @@ class CameraFragment : Fragment() {
         // session is torn down or session.stopRepeating() is called
         session.setRepeatingRequest(captureRequest.build(), null, cameraHandler)
 
-        timer = object : CountDownTimer(5000, 1000) {
+        timer = object : CountDownTimer(5000, 100) {
             override fun onTick(millisUntilFinished: Long) {
-                timer_text.setText("" + millisUntilFinished / 1000)
+                timer_text.setText(displayDouble(millisUntilFinished / 1000.toDouble()))
             }
 
             override fun onFinish() {
-                timer_text.isVisible = false
+                var isProcessing = true
+                var count = 0
+                lifecycleScope.launch(Dispatchers.Main) {
+                    while(isProcessing) {
+                        if(count > 2) count = 0
+                        else count++
+                        timer_text.textSize = 36.toFloat()
+                        timer_text.setText("Processing" + ".".repeat(count % 4))
+                        delay(800)
+                    }
+                }
+
                 lifecycleScope.launch(Dispatchers.IO) {
                     val result = takePhoto()
                     State.photo = result
                     State.colors = Utils.getRGB(result)
+                    isProcessing = false
                     lifecycleScope.launch(Dispatchers.Main) {
                         navController.navigate(CameraFragmentDirections
                                 .actionCameraToJpegViewer())
@@ -310,15 +304,6 @@ class CameraFragment : Fragment() {
                 CameraDevice.TEMPLATE_STILL_CAPTURE).apply { addTarget(imageReader.surface) }
         session.capture(captureRequest.build(), object : CameraCaptureSession.CaptureCallback() {
 
-            override fun onCaptureStarted(
-                    session: CameraCaptureSession,
-                    request: CaptureRequest,
-                    timestamp: Long,
-                    frameNumber: Long) {
-                super.onCaptureStarted(session, request, timestamp, frameNumber)
-                viewFinder.post(animationTask)
-            }
-
             override fun onCaptureCompleted(
                     session: CameraCaptureSession,
                     request: CaptureRequest,
@@ -341,7 +326,7 @@ class CameraFragment : Fragment() {
                         // Dequeue images while timestamps don't match
                         val image = imageQueue.take()
 
-                         if (image.timestamp != resultTimestamp) continue
+                        if (image.timestamp != resultTimestamp) continue
 
                         val planes = image.planes
                         val bs = planes[0].buffer.capacity()

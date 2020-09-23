@@ -18,6 +18,8 @@ package com.example.android.camera2.basic.fragments
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.graphics.ImageFormat
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
@@ -35,8 +37,10 @@ import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentStatePagerAdapter
 import androidx.navigation.Navigation
 import com.example.android.camera2.basic.CMethod
+import com.example.android.camera2.basic.KeyboardUtils
 import com.example.android.camera2.basic.R
 import com.example.android.camera2.basic.State
+import com.example.android.camera2.basic.State.colors
 import com.google.android.material.tabs.TabLayout
 import kotlinx.android.synthetic.main.fragment_setup.*
 
@@ -80,6 +84,7 @@ class SetupFragment : Fragment() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 State.a = s.toString().toDouble()
+                inputA.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#000000"))
             }
             override fun afterTextChanged(s: Editable?) = Unit
         })
@@ -88,6 +93,7 @@ class SetupFragment : Fragment() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 State.b = s.toString().toDouble()
+                inputB.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#000000"))
             }
             override fun afterTextChanged(s: Editable?) = Unit
         })
@@ -100,8 +106,11 @@ class SetupFragment : Fragment() {
             start_button.isEnabled = false
             return
         }
-
         start_button.setOnClickListener {
+            if(State.a == null) inputA.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#FF0000"))
+            if(State.b == null) inputB.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#FF0000"))
+            KeyboardUtils.hideKeyboardFrom(context, view)
+            if(State.a == null || State.b == null) return@setOnClickListener
             Navigation.findNavController(requireActivity(), R.id.fragment_container)
                 .navigate(SetupFragmentDirections.actionSelectorToCamera(
                         cameraId, ImageFormat.JPEG))

@@ -31,35 +31,13 @@ import androidx.navigation.NavController
 import androidx.navigation.Navigation
 import com.example.android.camera2.basic.R
 import com.example.android.camera2.basic.State
+import com.example.android.camera2.basic.displayDouble
+import com.example.android.camera2.basic.getHue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 
 class ImageViewerFragment : Fragment() {
-
-    /** Default Bitmap decoding options */
-//    private val bitmapOptions = BitmapFactory.Options().apply {
-//        inJustDecodeBounds = false
-//        // Keep Bitmaps at less than 1 MP
-//        if (max(outHeight, outWidth) > DOWNSAMPLE_SIZE) {
-//            val scaleFactorX = outWidth / DOWNSAMPLE_SIZE + 1
-//            val scaleFactorY = outHeight / DOWNSAMPLE_SIZE + 1
-//            inSampleSize = max(scaleFactorX, scaleFactorY)
-//        }
-//    }
-
-    /** Bitmap transformation derived from passed arguments */
-//    private val bitmapTransformation: Matrix by lazy { decodeExifOrientation(ORIENTATION_NORMAL) }
-
-    /** Flag indicating that there is depth data available for this image */
-//    private val isDepth: Boolean by lazy { args.depth }
-//
-//    /** Data backing our Bitmap viewpager */
-//    private val bitmapList: MutableList<Bitmap> = mutableListOf()
-//
-//    private fun imageViewFactory() = ImageView(requireContext()).apply {
-//        layoutParams = ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT)
-//    }
     private val navController: NavController by lazy {
         Navigation.findNavController(requireActivity(), R.id.fragment_container)
     }
@@ -70,26 +48,17 @@ class ImageViewerFragment : Fragment() {
             container: ViewGroup?,
             savedInstanceState: Bundle?
     ): View? = inflater.inflate(R.layout.fragment_image_viewer, container, false)
-//    ): View? = ViewPager2(requireContext()).apply {
-//        // Populate the ViewPager and implement a cache of two media items
-//        offscreenPageLimit = 2
-//        adapter = GenericListAdapter(
-//                bitmapList,
-//                itemViewFactory = { imageViewFactory() }) { view, item, _ ->
-//            view as ImageView
-//            Glide.with(view).load(item).into(view)
-//        }
-//    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val imgView = view.findViewById<ImageView>(R.id.image_display)
-//        view as ViewPager2
         view.findViewById<Button>(R.id.retake_button).setOnClickListener { navController.navigate(ImageViewerFragmentDirections.actionImageViewerFragmentToSetupFragment()) }
 
         lifecycleScope.launch(Dispatchers.IO) {
             val bitmap = State.photo
             val colors = State.colors
+            val a = State.a
+            val b = State.b
             if(bitmap !== null) {
                 val matrix = Matrix()
                 matrix.postRotate(90.0.toFloat())
@@ -100,33 +69,18 @@ class ImageViewerFragment : Fragment() {
                 imgView.setImageBitmap(rotatedBitmap)
             }
 
-            val tv = view.findViewById<TextView>(R.id.rgb_desc)
-            if(colors !== null) {
-                tv.text = "R:${colors.red} G:${colors.green} B:${colors.blue}"
+            val res = view.findViewById<TextView>(R.id.result)
+            val tv = view.findViewById<TextView>(R.id.result_display)
+            val tvrgb = view.findViewById<TextView>(R.id.rgb_display)
+            if(colors !== null && a != null && b != null) {
+                res.text = "${res.text} (${State.method.name})"
+                tvrgb.text = "(R: ${colors.red} G: ${colors.green} B: ${colors.blue})"
+                val measured = if(State.method.name == "DNBA") colors.green.toFloat() else getHue(colors)
+                tv.text = "${State.a} ${State.method.value.text.replace("measured", displayDouble(measured))} ${State.b} = ${displayDouble(State.method.value.calculate(a,b,colors))}"
             } else {
-                tv.text = "Err occured"
+                tv.text = "Error occured"
+                tvrgb.text = "Please try again"
             }
-            // Load input image file
-//            val inputBuffer = loadInputBuffer()
-//
-//            // Load the main JPEG image
-//            addItemToViewPager(view, decodeBitmap(inputBuffer, 0, inputBuffer.size))
-//
-//            // If we have depth data attached, attempt to load it
-//            if (isDepth) {
-//                try {
-//                    val depthStart = findNextJpegEndMarker(inputBuffer, 2)
-//                    addItemToViewPager(view, decodeBitmap(
-//                            inputBuffer, depthStart, inputBuffer.size - depthStart))
-//
-//                    val confidenceStart = findNextJpegEndMarker(inputBuffer, depthStart)
-//                    addItemToViewPager(view, decodeBitmap(
-//                            inputBuffer, confidenceStart, inputBuffer.size - confidenceStart))
-//
-//                } catch (exc: RuntimeException) {
-//                    Log.e(TAG, "Invalid start marker for depth or confidence data")
-//                }
-//            }
         }
     }
 

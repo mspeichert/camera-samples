@@ -14,6 +14,13 @@ typealias PixelsByXY = MutableMap<String, PixelData>
 class PixelData(var x: Int, var y: Int, var color: Int) {}
 class Rect(var top: Int, var left: Int, var right: Int, var bottom: Int) {}
 
+fun displayDouble(d: Double): String {
+    return String.format("%.1f", d)
+}
+fun displayDouble(d: Float): String {
+    return String.format("%.1f", d)
+}
+
 class Utils {
     companion object Calc {
         fun xy(x: Int, y: Int): String {
