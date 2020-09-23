@@ -23,13 +23,21 @@ import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.hardware.camera2.CameraMetadata
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
+import android.widget.TextView
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
+import androidx.fragment.app.FragmentStatePagerAdapter
 import androidx.navigation.Navigation
-import com.example.android.camera.utils.GenericListAdapter
+import com.example.android.camera2.basic.CMethod
 import com.example.android.camera2.basic.R
+import com.example.android.camera2.basic.State
+import com.google.android.material.tabs.TabLayout
 import kotlinx.android.synthetic.main.fragment_setup.*
 
 class SetupFragment : Fragment() {
@@ -43,6 +51,46 @@ class SetupFragment : Fragment() {
     @SuppressLint("MissingPermission")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        val tabs = view.findViewById<TabLayout>(R.id.tabs)
+        val inputA = view.findViewById<EditText>(R.id.a)
+        if(State.a != null) inputA.setText(State.a.toString())
+        val inputB = view.findViewById<EditText>(R.id.b)
+        if(State.b != null) inputB.setText(State.b.toString())
+        val equation = view.findViewById<TextView>(R.id.equation)
+        val iso = view.findViewById<TextView>(R.id.iso)
+        equation.text = State.method.value.text
+        iso.text = "ISO: ${State.method.value.ISO}"
+        tabs.tabRippleColor = null
+
+
+        tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab?) {
+                if(tab == null) return
+                if(tab.text == getString(R.string.dnba)) State.method = CMethod.DNBA
+                if(tab.text == getString(R.string.jaffe)) State.method = CMethod.Jaffe
+
+                equation.text = State.method.value.text
+                iso.text = "ISO: ${State.method.value.ISO}"
+            }
+            override fun onTabReselected(tab: TabLayout.Tab?)= Unit
+            override fun onTabUnselected(tab: TabLayout.Tab?)= Unit
+        })
+
+        inputA.addTextChangedListener(object:TextWatcher{
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                State.a = s.toString().toDouble()
+            }
+            override fun afterTextChanged(s: Editable?) = Unit
+        })
+
+        inputB.addTextChangedListener(object:TextWatcher{
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                State.b = s.toString().toDouble()
+            }
+            override fun afterTextChanged(s: Editable?) = Unit
+        })
 
         val cameraManager =
                 requireContext().getSystemService(Context.CAMERA_SERVICE) as CameraManager
@@ -52,52 +100,20 @@ class SetupFragment : Fragment() {
             start_button.isEnabled = false
             return
         }
+
         start_button.setOnClickListener {
             Navigation.findNavController(requireActivity(), R.id.fragment_container)
                 .navigate(SetupFragmentDirections.actionSelectorToCamera(
                         cameraId, ImageFormat.JPEG))
         }
 
-//        view.apply {
-//
-//            val cameraManager =
-//                    requireContext().getSystemService(Context.CAMERA_SERVICE) as CameraManager
-//
-//            val cameraId = findCamera(cameraManager)
-//
-//            val button = view.findViewById<Button>(android.R.id.startBtn)
-//
-//            val layoutId = android.R.layout.simple_list_item_1
-////            adapter = GenericListAdapter
-//            adapter = GenericListAdapter(cameraList, itemLayoutId = layoutId) { view, item, _ ->
-//                view.findViewById<TextView>(android.R.id.text1).text = item.title
-//                view.setOnClickListener {
-//                    Navigation.findNavController(requireActivity(), R.id.fragment_container)
-//                            .navigate(SelectorFragmentDirections.actionSelectorToCamera(
-//                                    item.cameraId, item.format))
-//                }
-//            }
-//        }
 
     }
 
     companion object {
-
-        /** Helper class used as a data holder for each selectable camera format item */
-//        private data class FormatItem(val title: String, val cameraId: String, val format: Int)
-
-        /** Helper function used to convert a lens orientation enum into a human-readable string */
-//        private fun lensOrientationString(value: Int) = when(value) {
-//            CameraCharacteristics.LENS_FACING_BACK -> "Back"
-//            CameraCharacteristics.LENS_FACING_FRONT -> "Front"
-//            CameraCharacteristics.LENS_FACING_EXTERNAL -> "External"
-//            else -> "Unknown"
-//        }
-
         /** Helper function used to list all compatible cameras and supported pixel formats */
         @SuppressLint("InlinedApi")
         private fun findCamera(cameraManager: CameraManager): String? {
-//            var availableCamera: FormatItem? = null
 
             // Get list of all compatible cameras
             val cameraIds = cameraManager.cameraIdList.filter {
@@ -112,43 +128,6 @@ class SetupFragment : Fragment() {
                 cameraManager.getCameraCharacteristics(id).get(CameraCharacteristics.LENS_FACING)!! == CameraCharacteristics.LENS_FACING_BACK
             }
             return backCamera
-            // Iterate over the list of cameras and return all the compatible ones
-//            cameraIds.forEach { id ->
-//                val characteristics = cameraManager.getCameraCharacteristics(id)
-//                if(characteristics.get(CameraCharacteristics.LENS_FACING)!! === CameraCharacteristics.LENS_FACING_BACK) {
-//                availableCamera = FormatItem("Back camera", id, ImageFormat.JPEG)
-//            }
-//                val orientation = lensOrientationString(
-//                        characteristics.get(CameraCharacteristics.LENS_FACING)!!)
-//
-//                // Query the available capabilities and output formats
-//                val capabilities = characteristics.get(
-//                        CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)!!
-//                val outputFormats = characteristics.get(
-//                        CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)!!.outputFormats
-//
-//                // All cameras *must* support JPEG output so we don't need to check characteristics
-//                availableCameras.add(FormatItem(
-//                        "$orientation JPEG ($id)", id, ImageFormat.JPEG))
-
-//                // Return cameras that support RAW capability
-//                if (capabilities.contains(
-//                                CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_RAW) &&
-//                        outputFormats.contains(ImageFormat.RAW_SENSOR)) {
-//                    availableCameras.add(FormatItem(
-//                            "$orientation RAW ($id)", id, ImageFormat.RAW_SENSOR))
-//                }
-//
-//                // Return cameras that support JPEG DEPTH capability
-//                if (capabilities.contains(
-//                            CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_DEPTH_OUTPUT) &&
-//                        outputFormats.contains(ImageFormat.DEPTH_JPEG)) {
-//                    availableCameras.add(FormatItem(
-//                            "$orientation DEPTH ($id)", id, ImageFormat.DEPTH_JPEG))
-//                }
-//            }
-
-//            return availableCameras
         }
     }
 }

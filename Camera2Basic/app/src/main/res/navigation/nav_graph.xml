@@ -77,21 +77,9 @@
         android:id="@+id/image_viewer_fragment"
         android:name="com.example.android.camera2.basic.fragments.ImageViewerFragment"
         android:label="Image Viewer" >
-
-        <argument
-            android:name="file_path"
-            app:argType="string"
-            app:nullable="false"/>
-
-        <argument
-            android:name="orientation"
-            app:argType="integer"
-            android:defaultValue="0" />
-
-        <argument
-            android:name="depth"
-            app:argType="boolean"
-            android:defaultValue="false" />
+        <action
+            android:id="@+id/action_image_viewer_fragment_to_setup_fragment"
+            app:destination="@id/setup_fragment" />
     </fragment>
 
 </navigation>

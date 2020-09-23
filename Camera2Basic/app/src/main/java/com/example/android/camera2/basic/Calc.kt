@@ -4,6 +4,8 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.util.Log
 import androidx.core.graphics.set
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -11,7 +13,6 @@ typealias PixelsByXY = MutableMap<String, PixelData>
 
 class PixelData(var x: Int, var y: Int, var color: Int) {}
 class Rect(var top: Int, var left: Int, var right: Int, var bottom: Int) {}
-class ColorResult(var red: Int, var green: Int, var blue: Int) {}
 
 class Utils {
     companion object Calc {
@@ -25,10 +26,16 @@ class Utils {
 
         fun areGroupsMergable(g1: PixelsByXY, g2: PixelsByXY): Boolean {
             for ((k, v) in g2) {
-                if (findNeighbours(g1, v) { c, n -> compareColors(c.color, n.color, true) < 50 }) return true
+                if (findNeighbours(g1, v) { c, n -> compareColors(c.color, n.color, false) < 50 }) return true
             }
             return false
         }
+
+        suspend fun getRGBAsync(b: Bitmap): ColorResult? =
+                withContext(Dispatchers.Default) {
+                    getRGB(b)
+                }
+
 
         fun getRGB(b: Bitmap): ColorResult? {
 
