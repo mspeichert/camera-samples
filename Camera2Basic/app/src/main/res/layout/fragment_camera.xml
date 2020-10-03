@@ -42,14 +42,28 @@
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
-
+        <TextView
+            android:id="@+id/iso_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_centerHorizontal="true"
+            android:layout_marginBottom="36dp"
+            android:background="@drawable/bg_circle"
+            android:paddingHorizontal="24dp"
+            android:paddingVertical="8dp"
+            android:text="checking..."
+            android:textAlignment="center"
+            android:textColor="#000000"
+            android:textSize="48sp"
+            />
         <TextView
             android:id="@+id/timer_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentBottom="true"
             android:layout_centerHorizontal="true"
-            android:layout_marginBottom="96dp"
+            android:layout_marginBottom="172dp"
             android:background="@drawable/bg_circle"
             android:paddingHorizontal="24dp"
             android:paddingVertical="8dp"
@@ -57,8 +71,6 @@
             android:textAlignment="center"
             android:textColor="#000000"
             android:textSize="48sp"
-
-
-            android:visibility="visible" />
+             />
     </RelativeLayout>
 </FrameLayout>

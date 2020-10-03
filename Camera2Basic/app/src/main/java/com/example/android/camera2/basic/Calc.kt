@@ -53,7 +53,7 @@ class Utils {
                 for (y in 0 until b.height) {
                     val data = PixelData(x, y, b.getPixel(x, y))
 
-                    if (compareColors(data.color, black, false) > 8) {
+                    if (compareColors(data.color, black, false) > 20) {
 
                         val matchingGroup = colorGroups.find { g -> findNeighbours(g, data) { c, n -> compareColors(c.color, n.color, false) < 50 } }
                         if (matchingGroup == null) colorGroups.add(mutableMapOf(xy(x, y) to data))
@@ -78,6 +78,7 @@ class Utils {
             colorGroups.forEach {
                 paintBitmap(mutableB, findRect(it), Color.RED)
             }
+            State.photo = mutableB
             var biggest: PixelsByXY? = null
             for (cg in colorGroups) {
                 if (biggest === null) {

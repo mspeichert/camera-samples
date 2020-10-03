@@ -76,7 +76,7 @@ class ImageViewerFragment : Fragment() {
                 res.text = "${res.text} (${State.method.name})"
                 tvrgb.text = "(R: ${colors.red} G: ${colors.green} B: ${colors.blue})"
                 val measured = if(State.method.name == "DNBA") colors.green.toFloat() else getHue(colors)
-                tv.text = "${State.a} ${State.method.value.text.replace("measured", displayDouble(measured))} ${State.b} = ${displayDouble(State.method.value.calculate(a,b,colors))}"
+                tv.text = "${State.a} ${State.method.value.text.replace("crea", displayDouble(State.method.value.calculate(a,b,colors)))} ${State.b} = ${displayDouble(measured)}"
             } else {
                 tv.text = "Error occured"
                 tvrgb.text = "Please try again"

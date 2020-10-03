@@ -157,12 +157,25 @@ class CameraFragment : Fragment() {
                 }
 //        val size = characteristics.get(
 //                CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)!!
-//                .getOutputSizes(args.pixelFormat).minBy { it.height * it.width }!!
+//                .getOutputSizes(args.pixelFormat).maxBy { it.height * it.width }!!
+        val supportLevel = characteristics.get(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL)
+        val capability = characteristics.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
         val xs = characteristics.get(CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE)
         val ys = characteristics.get(CameraCharacteristics.SENSOR_INFO_SENSITIVITY_RANGE)
         val zs = characteristics.get(CameraCharacteristics.SENSOR_INFO_MAX_FRAME_DURATION)
-        val flashAvailable = characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) ?: false
-
+        if(supportLevel != null) {
+            when(supportLevel){
+                CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_3 -> iso_text.text = "3 support"
+                CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY  -> iso_text.text = "legacy support"
+                CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_EXTERNAL -> iso_text.text = "ext support"
+                CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_FULL -> iso_text.text = "full support"
+                CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED -> iso_text.text = "limited support"
+            }
+        }
+        if(capability != null){
+            iso_text.text = "${iso_text.text} cap: ${capability.joinToString(", ")}"
+//            CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_
+        }
 
         imageReader = ImageReader.newInstance(
                 size.width, size.height, args.pixelFormat, IMAGE_BUFFER_SIZE)
@@ -178,10 +191,18 @@ class CameraFragment : Fragment() {
                 CameraDevice.TEMPLATE_PREVIEW).apply { addTarget(viewFinder.holder.surface) }
 
 
-        captureRequest.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_OFF);
-//        captureRequest.set(CaptureRequest.SENSOR_EXPOSURE_TIME, exposureTime);
+        captureRequest.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
+        captureRequest.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
+//        captureRequest.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF);
+//        captureRequest.set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_OFF);
+//        captureRequest.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_TORCH);
+        captureRequest.set(CaptureRequest.LENS_FOCUS_DISTANCE, 0.0f);
+        captureRequest.set(CaptureRequest.SENSOR_EXPOSURE_TIME, (234324552 - 9516) / 2);
+        captureRequest.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, 0);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            captureRequest.set(CaptureRequest.CONTROL_POST_RAW_SENSITIVITY_BOOST, 0)
+        };
         captureRequest.set(CaptureRequest.SENSOR_SENSITIVITY, State.method.value.ISO)
-        captureRequest.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_TORCH);
 
 //        captureRequest.set(CaptureRequest.JPEG_ORIENTATION, 180)
 //        captureRequest.set(CaptureRequest.SENSOR_FRAME_DURATION, frameDuration);
@@ -210,7 +231,7 @@ class CameraFragment : Fragment() {
 
                 lifecycleScope.launch(Dispatchers.IO) {
                     val result = takePhoto()
-                    State.photo = result
+//                    State.photo = result
                     State.colors = Utils.getRGB(result)
                     isProcessing = false
                     lifecycleScope.launch(Dispatchers.Main) {

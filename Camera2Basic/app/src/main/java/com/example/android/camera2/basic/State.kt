@@ -3,6 +3,7 @@ package com.example.android.camera2.basic
 import android.graphics.Bitmap
 import android.graphics.Color
 import kotlin.math.log10
+import kotlin.math.pow
 
 class ColorResult(var red: Int, var green: Int, var blue: Int) {}
 fun getHue(c: ColorResult): Float {
@@ -16,15 +17,16 @@ abstract class CalculationMethod(val ISO: Int, val text: String) {
     abstract fun calculate(a: Double, b: Double, value: ColorResult): Double
 }
 
-class JaffeMethod():  CalculationMethod(100, "* measured +") {
+class JaffeMethod():  CalculationMethod(100, "* log(crea) +") {
     override fun calculate(a: Double, b: Double, value: ColorResult): Double {
-        return a * log10(getHue(value).toDouble()) + b
+        val pow = (getHue(value).toDouble() - b) / a
+        return 10.0.pow(pow)
     }
 }
 
-class DNBAMethod():  CalculationMethod(200, "* log(measured) +") {
+class DNBAMethod():  CalculationMethod(200, "* crea +") {
     override fun calculate(a: Double, b: Double, value: ColorResult): Double {
-        return a * value.green + b
+        return (value.green - b) / a
     }
 }
 
