@@ -2,6 +2,7 @@ package com.example.android.camera2.basic
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.ImageFormat
 import kotlin.math.log10
 import kotlin.math.pow
 
@@ -39,6 +40,8 @@ enum class CMethod(val value: CalculationMethod) {
 object State {
     var colors: ColorResult? = null
     var photo: Bitmap? = null
+    var cameraId: String? = null
+    var imageFormat = ImageFormat.JPEG
     var method: CMethod = CMethod.DNBA
     var a: Double? = null
     var b: Double? = null

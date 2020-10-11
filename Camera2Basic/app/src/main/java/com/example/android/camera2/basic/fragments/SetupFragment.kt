@@ -106,14 +106,14 @@ class SetupFragment : Fragment() {
             start_button.isEnabled = false
             return
         }
+        State.cameraId = cameraId
         start_button.setOnClickListener {
             if(State.a == null) inputA.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#FF0000"))
             if(State.b == null) inputB.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#FF0000"))
             KeyboardUtils.hideKeyboardFrom(context, view)
             if(State.a == null || State.b == null) return@setOnClickListener
             Navigation.findNavController(requireActivity(), R.id.fragment_container)
-                .navigate(SetupFragmentDirections.actionSelectorToCamera(
-                        cameraId, ImageFormat.JPEG))
+                .navigate(SetupFragmentDirections.actionSelectorToCamera())
         }
 
 

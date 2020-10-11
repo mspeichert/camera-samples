@@ -21,8 +21,8 @@ fun displayDouble(d: Float): String {
     return String.format("%.1f", d)
 }
 
-class Utils {
-    companion object Calc {
+class Calculations {
+    companion object Utils {
         fun xy(x: Int, y: Int): String {
             return x.toString() + "x" + y
         }
@@ -37,12 +37,6 @@ class Utils {
             }
             return false
         }
-
-        suspend fun getRGBAsync(b: Bitmap): ColorResult? =
-                withContext(Dispatchers.Default) {
-                    getRGB(b)
-                }
-
 
         fun getRGB(b: Bitmap): ColorResult? {
 
@@ -199,13 +193,6 @@ class Utils {
                 if (v > repetitions[most] ?: 0) most = k
             }
             return most
-        }
-
-        fun logColor(c: Int) {
-            val red = Color.red(c)
-            val green = Color.green(c)
-            val blue = Color.blue(c)
-            Log.d("color", "$red $green $blue")
         }
     }
 }
