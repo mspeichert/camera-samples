@@ -54,7 +54,7 @@ class ImageViewerFragment : Fragment() {
         val imgView = view.findViewById<ImageView>(R.id.image_display)
         view.findViewById<Button>(R.id.retake_button).setOnClickListener { navController.navigate(ImageViewerFragmentDirections.actionImageViewerFragmentToSetupFragment()) }
 
-        lifecycleScope.launch(Dispatchers.IO) {
+        lifecycleScope.launch(Dispatchers.Main) {
             val bitmap = State.photo
             val colors = State.colors
             val a = State.a

@@ -5,20 +5,26 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.hardware.camera2.*
+import android.media.Image
 import android.media.ImageReader
 import android.os.Handler
 import android.os.HandlerThread
 import android.util.Log
-import android.util.Size
 import android.view.Surface
+import android.view.SurfaceHolder
 import androidx.fragment.app.FragmentActivity
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.TimeoutException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 import kotlin.math.absoluteValue
 
 class Camera2Support(context: Context) : CameraSupport {
+    private val IMAGE_BUFFER_SIZE: Int = 3
+
+    private val IMAGE_CAPTURE_TIMEOUT_MILLIS: Long = 5000
 
     private val cameraManager: CameraManager by lazy {
         context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
@@ -36,10 +42,13 @@ class Camera2Support(context: Context) : CameraSupport {
 
     private lateinit var session: CameraCaptureSession
 
+    private lateinit var imageReader: ImageReader
 
-    companion object Utils {
+    private val imageReaderThread = HandlerThread("imageReaderThread").apply { start() }
 
-    }
+    private val imageReaderHandler = Handler(imageReaderThread.looper)
+
+
     private suspend fun createCaptureSession(
             device: CameraDevice,
             targets: List<Surface>,
@@ -56,7 +65,7 @@ class Camera2Support(context: Context) : CameraSupport {
         }, handler)
     }
 
-    override suspend fun prepareCamera(activity: FragmentActivity, surface: Surface, imageReader: ImageReader): Size {
+    override suspend fun prepareCamera(activity: FragmentActivity, surface: Surface) {
 
         val size = characteristics.get(
                 CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)!!
@@ -64,6 +73,8 @@ class Camera2Support(context: Context) : CameraSupport {
                     if ((acc.width - 640).absoluteValue < (size.width - 640).absoluteValue) acc
                     else size
                 }
+
+        imageReader = ImageReader.newInstance(size.width, size.height, State.imageFormat, IMAGE_BUFFER_SIZE)
 
         camera = openCamera(activity, cameraManager, State.cameraId ?: "0", cameraHandler)
 
@@ -89,8 +100,11 @@ class Camera2Support(context: Context) : CameraSupport {
 
         session.setRepeatingRequest(captureRequest.build(), null, cameraHandler)
 
-        return size
     }
+
+    override fun applyPreview(holder: SurfaceHolder) {}
+
+    override fun reapplyPreview(holder: SurfaceHolder) {}
 
     @SuppressLint("MissingPermission")
     suspend fun openCamera(
@@ -123,7 +137,15 @@ class Camera2Support(context: Context) : CameraSupport {
         }, handler)
     }
 
-    override fun capture(imageReader: ImageReader, onCompleted: (ts: Long?) -> Unit) {
+    override suspend fun capture(): Bitmap = suspendCoroutine { cnt ->
+        @Suppress("ControlFlowWithEmptyBody")
+        while (imageReader.acquireNextImage() != null) {}
+
+        val imageQueue = ArrayBlockingQueue<Image>(IMAGE_BUFFER_SIZE)
+        imageReader.setOnImageAvailableListener({ reader ->
+            imageQueue.add(reader.acquireNextImage())
+        }, imageReaderHandler)
+
         val captureRequest = session.device.createCaptureRequest(
                 CameraDevice.TEMPLATE_STILL_CAPTURE).apply { addTarget(imageReader.surface) }
         session.capture(captureRequest.build(), object : CameraCaptureSession.CaptureCallback() {
@@ -134,7 +156,27 @@ class Camera2Support(context: Context) : CameraSupport {
                 super.onCaptureCompleted(session, request, result)
                 val resultTimestamp = result.get(CaptureResult.SENSOR_TIMESTAMP)
                 Log.d("Camera2Support", "Capture result received: $resultTimestamp")
-                onCompleted(resultTimestamp)
+
+                val exc = TimeoutException("Image dequeuing took too long")
+                val timeoutRunnable = Runnable { cnt.resumeWithException(exc) }
+                imageReaderHandler.postDelayed(timeoutRunnable, IMAGE_CAPTURE_TIMEOUT_MILLIS)
+                while (true) {
+                    val image = imageQueue.take()
+                    // Dequeue images while timestamps don't match
+                    if (image.timestamp != resultTimestamp) continue
+
+                    val planes = image.planes
+                    val bs = planes[0].buffer.capacity()
+                    val ba = ByteArray(bs)
+                    planes[0].buffer.get(ba)
+
+                    val bitmap: Bitmap = BitmapFactory.decodeByteArray(ba, 0, ba.size) // NULL err
+
+                    imageReader.setOnImageAvailableListener(null, null)
+                    imageReaderHandler.removeCallbacks(timeoutRunnable)
+
+                    cnt.resume(bitmap)
+                }
             }
         }, cameraHandler)
     }
@@ -149,5 +191,6 @@ class Camera2Support(context: Context) : CameraSupport {
 
     override fun destroy() {
         cameraThread.quitSafely()
+        imageReaderThread.quitSafely()
     }
 }

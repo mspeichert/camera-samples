@@ -1,13 +1,15 @@
 package com.example.android.camera2.basic
 
-import android.media.ImageReader
-import android.util.Size
+import android.graphics.Bitmap
 import android.view.Surface
+import android.view.SurfaceHolder
 import androidx.fragment.app.FragmentActivity
 
 interface CameraSupport {
-    suspend fun prepareCamera(activity: FragmentActivity, surface: Surface, imageReader: ImageReader): Size
-    fun capture(imageReader: ImageReader, onCompleted: (ts: Long?) -> Unit)
+    suspend fun prepareCamera(activity: FragmentActivity, surface: Surface)
+    suspend fun capture(): Bitmap?
+    fun applyPreview(holder: SurfaceHolder)
+    fun reapplyPreview(holder: SurfaceHolder)
     fun stop()
     fun destroy()
 }
