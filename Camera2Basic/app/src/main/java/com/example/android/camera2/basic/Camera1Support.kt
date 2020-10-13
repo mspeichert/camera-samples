@@ -12,7 +12,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 import kotlin.math.absoluteValue
 
-class Camera1Support: CameraSupport {
+class Camera1Support : CameraSupport {
 
     val camera: Camera? by lazy {
         getCameraInstance()
@@ -25,27 +25,29 @@ class Camera1Support: CameraSupport {
             null
         }
     }
-    override suspend fun prepareCamera(activity: FragmentActivity, surface: Surface) {
-        val params: Camera.Parameters? = camera?.parameters
-        params?.flashMode = Camera.Parameters.FLASH_MODE_TORCH
 
-        val size = camera?.parameters?.supportedPictureSizes?.reduce { acc, size ->
-                    if ((acc.width - 640).absoluteValue < (size.width - 640).absoluteValue) acc
-                    else size
-                }
-        if(size != null) {
-            params?.setPictureSize(size.width, size.height)
-//            params?.setPreviewSize(size.width, size.height)
-        }
-        params?.autoExposureLock = true
-        params?.set("iso", State.method.value.ISO.toString())
-        camera?.parameters = params
+    override suspend fun prepareCamera(activity: FragmentActivity, surface: Surface) {
+        camera?.setDisplayOrientation(90)
     }
 
     override fun applyPreview(holder: SurfaceHolder) {
-        if(camera == null) return
+        if (camera == null) return
         camera?.apply {
             try {
+                parameters?.also { params ->
+                    params?.set("flash-mode", Camera.Parameters.FLASH_MODE_TORCH)
+
+                    val size = camera?.parameters?.supportedPictureSizes?.reduce { acc, size ->
+                        if ((acc.width - 640).absoluteValue < (size.width - 640).absoluteValue) acc
+                        else size
+                    }
+                    if (size != null) {
+                        params?.setPictureSize(size.width, size.height)
+                        params?.setPreviewSize(size.width, size.height)
+                    }
+                    params?.set("iso", "ISO${State.method.value.ISO}")
+                    parameters = params
+                }
                 setPreviewDisplay(holder)
                 startPreview()
             } catch (e: java.lang.Exception) {
@@ -55,19 +57,28 @@ class Camera1Support: CameraSupport {
     }
 
     override fun reapplyPreview(holder: SurfaceHolder) {
-        if(camera == null) return
+        if (camera == null) return
         camera!!.stopPreview()
         applyPreview(holder)
     }
 
     override suspend fun capture(): Bitmap? = suspendCoroutine { cnt ->
-        if(camera == null) cnt.resume(null)
+        if (camera == null) cnt.resume(null)
 
+        val pic2 = object : Camera.PictureCallback {
+            override fun onPictureTaken(data: ByteArray?, camera: Camera?) {
+                if (data == null) {
+                    Log.e("s", "data null")
+                }
+                val bitmap: Bitmap = BitmapFactory.decodeByteArray(data, 0, data!!.size) // NULL err
+                cnt.resume(bitmap)
+            }
+        }
         val pic = Camera.PictureCallback { data, _ ->
             val bitmap: Bitmap = BitmapFactory.decodeByteArray(data, 0, data.size) // NULL err
             cnt.resume(bitmap)
         }
-        camera!!.takePicture(null, null, pic)
+        camera!!.takePicture(null, null, pic2)
     }
 
     override fun stop() {
