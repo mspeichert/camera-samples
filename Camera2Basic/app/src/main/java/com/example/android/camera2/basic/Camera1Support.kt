@@ -65,20 +65,11 @@ class Camera1Support : CameraSupport {
     override suspend fun capture(): Bitmap? = suspendCoroutine { cnt ->
         if (camera == null) cnt.resume(null)
 
-        val pic2 = object : Camera.PictureCallback {
-            override fun onPictureTaken(data: ByteArray?, camera: Camera?) {
-                if (data == null) {
-                    Log.e("s", "data null")
-                }
-                val bitmap: Bitmap = BitmapFactory.decodeByteArray(data, 0, data!!.size) // NULL err
-                cnt.resume(bitmap)
-            }
-        }
-        val pic = Camera.PictureCallback { data, _ ->
+        val cb = Camera.PictureCallback { data, _ ->
             val bitmap: Bitmap = BitmapFactory.decodeByteArray(data, 0, data.size) // NULL err
             cnt.resume(bitmap)
         }
-        camera!!.takePicture(null, null, pic2)
+        camera!!.takePicture(null, null, cb)
     }
 
     override fun stop() {
